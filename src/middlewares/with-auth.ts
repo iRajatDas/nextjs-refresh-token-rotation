@@ -1,6 +1,5 @@
 import { NextFetchEvent, NextResponse, type NextRequest } from "next/server";
 import { CustomMiddleware } from "./chain";
-import { createAuthHeaders } from "@/functions/create-auth-headers";
 import { verifyAccessToken } from "@/functions/verify-access-token";
 import { refreshAccessToken } from "@/functions/refresh-access-token";
 import { logout } from "@/functions/logout";
@@ -9,8 +8,6 @@ export function withAuth(middleware: CustomMiddleware) {
   return async (request: NextRequest, event: NextFetchEvent, response: NextResponse) => {
     const pathname = request.nextUrl.pathname;
     const accessToken = request.cookies.get("Authentication");
-    const refreshToken = request.cookies.get("Refresh");
-    const headers = createAuthHeaders(request.headers, { accessToken, refreshToken });
 
     const isProtectedRoute = (pathname: string) => pathname.includes("/protected");
 
@@ -24,13 +21,13 @@ export function withAuth(middleware: CustomMiddleware) {
 
     try {
       if (isProtectedRoute(pathname) && accessToken) {
-        await verifyAccessToken(headers);
+        await verifyAccessToken();
       }
     } catch (_) {
       try {
-        response = await refreshAccessToken(response, headers);
+        response = await refreshAccessToken(response);
       } catch (_) {
-        response = await logout(response, headers);
+        response = await logout(response);
       }
     }
 

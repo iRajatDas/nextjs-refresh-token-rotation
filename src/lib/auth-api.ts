@@ -1,40 +1,20 @@
-import { XiorResponse } from "xior";
-import xiorClient from "./xior";
+import { httpClient } from "./http/http-client";
+import { LoginRequest } from "./types/auth.types";
 
-const BACKEND_URL = "http://localhost:3001/api/v1/auth";
-
-interface Response {
-  success: boolean;
-}
-
-interface AuthApi {
-  login: (email: string, password: string) => Promise<XiorResponse<Response>>;
-  logout: (headers?: Headers) => Promise<XiorResponse<Response>>;
-  verifyAccessToken: (headers?: Headers) => Promise<XiorResponse<Response>>;
-  refreshAccessToken: (headers?: Headers) => Promise<XiorResponse<Response>>;
-}
-
-export const authApi = (): AuthApi => {
+export const authApi = () => {
   return {
-    login,
-    logout,
-    verifyAccessToken,
-    refreshAccessToken,
+    login: async (email: string, password: string) => {
+      const request: LoginRequest = { email, password };
+      return httpClient.post("/auth/login", request);
+    },
+    logout: async () => {
+      return httpClient.post("/auth/logout");
+    },
+    verifyAccessToken: async () => {
+      return httpClient.get("/auth/verify");
+    },
+    refreshAccessToken: async () => {
+      return httpClient.post("/auth/refresh");
+    },
   };
-};
-
-const login = (email: string, password: string) => {
-  return xiorClient.post<Response>(`${BACKEND_URL}/login`, { email, password });
-};
-
-const logout = (headers?: Headers) => {
-  return xiorClient.get<Response>(`${BACKEND_URL}/logout`, { headers });
-};
-
-const verifyAccessToken = (headers?: Headers) => {
-  return xiorClient.get<Response>(`${BACKEND_URL}/verify`, { headers });
-};
-
-const refreshAccessToken = (headers?: Headers) => {
-  return xiorClient.get<Response>(`${BACKEND_URL}/refresh`, { headers });
 };

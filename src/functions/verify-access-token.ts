@@ -1,6 +1,6 @@
 import { authApi } from "@/lib/auth-api";
 
-export const verifyAccessToken = async (headers: Headers) => {
+export const verifyAccessToken = async () => {
   const { verifyAccessToken } = authApi();
-  await verifyAccessToken(headers);
+  await verifyAccessToken();
 };
