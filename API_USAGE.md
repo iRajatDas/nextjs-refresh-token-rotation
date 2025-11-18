@@ -11,6 +11,31 @@ The application follows SOLID principles with a clean, maintainable architecture
 - **Single Responsibility**: Each service handles one specific domain
 - **Open/Closed**: Services can be extended without modification
 
+## Token Management
+
+The application uses JWT tokens for authentication with automatic token management:
+
+- **Client-Side**: Tokens are stored as cookies and automatically attached to requests
+- **Server-Side**: Cookies are automatically included in server-side requests
+- **Token Refresh**: Automatic refresh when access token expires (401 responses)
+- **Request Queuing**: Failed requests are queued and retried after token refresh
+
+### How Login Works
+
+1. User submits email and password via the login form
+2. Backend API returns `accessToken` and `refreshToken` in JSON response
+3. Client stores tokens as cookies (`Authentication` and `Refresh`)
+4. User is redirected to protected route
+5. All subsequent requests include the access token via `Authorization: Bearer` header
+
+### Token Refresh Flow
+
+1. Request fails with 401 status
+2. HTTP client automatically calls refresh endpoint with stored refresh token
+3. New tokens are received and stored as cookies
+4. Original request is retried with new access token
+5. Additional requests that failed during refresh are queued and retried
+
 ## Services Available
 
 ### 1. AuthService

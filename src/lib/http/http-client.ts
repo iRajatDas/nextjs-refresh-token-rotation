@@ -1,6 +1,8 @@
 import { AxiosHttpClient } from "./axios-http-client";
 import { isClientSide } from "@/functions/is-client-side";
 import { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from "axios";
+import { setAuthCookies, getAuthCookie } from "../utils/token.utils";
+import { RefreshTokenResponse, LoginResponse } from "../types/auth.types";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
 
@@ -40,11 +42,25 @@ const createHttpClient = () => {
         .join("; ");
       config.headers = config.headers || {};
       config.headers.cookie = cookiesString;
+    } else {
+      const accessToken = getAuthCookie('Authentication');
+      if (accessToken && !config.headers?.Authorization) {
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${accessToken}`;
+      }
     }
     return config;
   };
 
-  const responseInterceptor = (response: AxiosResponse): AxiosResponse => response;
+  const responseInterceptor = (response: AxiosResponse): AxiosResponse => {
+    if (isClientSide() && response.data) {
+      const data = response.data as LoginResponse | RefreshTokenResponse;
+      if (data.accessToken && data.refreshToken) {
+        setAuthCookies(data.accessToken, data.refreshToken);
+      }
+    }
+    return response;
+  };
 
   const errorInterceptor = async (error: AxiosError): Promise<never> => {
     const originalRequest = error.config as InternalAxiosRequestConfig;
@@ -59,7 +75,18 @@ const createHttpClient = () => {
         isRefreshing = true;
 
         try {
-          await httpClient.post("/auth/refresh");
+          const refreshToken = getAuthCookie('Refresh');
+          if (!refreshToken) {
+            throw new Error('No refresh token available');
+          }
+          
+          const refreshResponse = await httpClient.post("/auth/refresh", { refreshToken });
+          const data = refreshResponse.data as RefreshTokenResponse;
+          
+          if (data.accessToken && data.refreshToken) {
+            setAuthCookies(data.accessToken, data.refreshToken);
+          }
+          
           isRefreshing = false;
           processQueue(null, httpClient);
 
@@ -84,7 +111,7 @@ const createHttpClient = () => {
     }
 
     if (isClientSide() && error.response?.status === 401) {
-      window.location.reload();
+      window.location.href = '/login';
     }
 
     return Promise.reject(error);
