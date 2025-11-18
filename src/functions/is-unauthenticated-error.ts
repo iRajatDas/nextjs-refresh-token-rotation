@@ -1,9 +1,8 @@
-import { XiorError } from "xior";
+import { AxiosError } from "axios";
 
 export const isUnauthorizedError = (error: unknown): boolean => {
-  if (error instanceof XiorError && error.response?.status === 401) {
+  if (error instanceof AxiosError && error.response?.status === 401) {
     return true;
-  } else {
-    return false;
   }
+  return false;
 };
