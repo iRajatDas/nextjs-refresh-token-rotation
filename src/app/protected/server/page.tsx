@@ -1,7 +1,6 @@
 import LogoutButton from "@/components/logout-button";
 import ServerError from "@/components/server-error";
 import { authApi } from "@/lib/auth-api";
-import React from "react";
 
 const Protected = async () => {
   try {
@@ -23,6 +22,7 @@ const Protected = async () => {
       </div>
     );
   } catch (error) {
+    // console.log("Error in Protected server component:", error);
     return <ServerError error={error} />;
   }
 };

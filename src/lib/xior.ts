@@ -1,6 +1,6 @@
-import xior, { XiorRequestConfig, XiorError } from "xior";
-import { authApi } from "./auth-api";
 import { isClientSide } from "@/functions/is-client-side";
+import xior, { XiorError, XiorRequestConfig } from "xior";
+import { authApi } from "./auth-api";
 
 const xiorClient = xior.create({
   withCredentials: true,
@@ -48,7 +48,7 @@ xiorClient.interceptors.response.use(
       error.response?.status === 401 &&
       isClientSide() &&
       !originalRequest?.url?.includes("/login") &&
-      !error.response?.request.url.includes("/refresh")
+      !originalRequest?.url?.includes("/refresh")
     ) {
       if (!isRefreshing) {
         isRefreshing = true;
@@ -75,7 +75,7 @@ xiorClient.interceptors.response.use(
       });
     }
 
-    if (isClientSide() && error.response?.status === 401) {
+    if (isClientSide() && error.response?.status === 401 && !originalRequest?.url?.includes("/refresh")) {
       window.location.reload();
     }
 

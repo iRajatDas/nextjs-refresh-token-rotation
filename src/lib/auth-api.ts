@@ -1,10 +1,13 @@
 import { XiorResponse } from "xior";
+import { API_ENDPOINTS } from "./constants";
 import xiorClient from "./xior";
 
-const BACKEND_URL = "http://localhost:3001/api/v1/auth";
+const BACKEND_URL = API_ENDPOINTS.BASE_URL;
 
 interface Response {
   success: boolean;
+  message?: string;
+  user?: Record<string, unknown>;
 }
 
 interface AuthApi {
@@ -24,17 +27,17 @@ export const authApi = (): AuthApi => {
 };
 
 const login = (email: string, password: string) => {
-  return xiorClient.post<Response>(`${BACKEND_URL}/login`, { email, password });
+  return xiorClient.post<Response>(`${BACKEND_URL}${API_ENDPOINTS.LOGIN}`, { email, password });
 };
 
 const logout = (headers?: Headers) => {
-  return xiorClient.get<Response>(`${BACKEND_URL}/logout`, { headers });
+  return xiorClient.get<Response>(`${BACKEND_URL}${API_ENDPOINTS.LOGOUT}`, { headers });
 };
 
 const verifyAccessToken = (headers?: Headers) => {
-  return xiorClient.get<Response>(`${BACKEND_URL}/verify`, { headers });
+  return xiorClient.get<Response>(`${BACKEND_URL}${API_ENDPOINTS.VERIFY}`, { headers });
 };
 
 const refreshAccessToken = (headers?: Headers) => {
-  return xiorClient.get<Response>(`${BACKEND_URL}/refresh`, { headers });
+  return xiorClient.get<Response>(`${BACKEND_URL}${API_ENDPOINTS.REFRESH}`, { headers });
 };
