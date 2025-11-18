@@ -1,0 +1,875 @@
+{
+  "info": {
+    "_postman_id": "35641827-7306-479d-bbe9-e7b5152892f6",
+    "name": "Advanced Auth System API",
+    "description": "# Advanced Authentication System API - Enterprise Edition\n\nA production-ready authentication system with comprehensive security features and enterprise-grade capabilities.\n\n## 🔥 Core Features\n\n- **JWT Authentication** - Access and refresh tokens with configurable expiration\n- **Role-Based Access Control (RBAC)** - Support for ADMIN, MODERATOR, and USER roles\n- **Two-Factor Authentication (2FA)** - TOTP-based 2FA with QR code generation\n- **Email Verification** - Secure email verification flow with 24-hour token expiration\n- **Session Management** - Track and manage active sessions across devices\n- **Backup Codes** - Recovery codes for 2FA with secure hashing\n\n## 🚀 Enterprise Features\n\n- **API Versioning** - `/api/v1/` endpoints with backward compatibility\n- **Request ID Tracking** - Unique UUID for every request (included in errors)\n- **Advanced Health Checks** - System metrics and Kubernetes-ready probes\n- **API Key Authentication** - Service-to-service authentication\n- **Enhanced Security Headers** - Strict CSP, Permissions-Policy, HSTS\n- **User Agent Validation** - Blocks suspicious user agents\n- **GDPR Compliance** - Account deletion (right to be forgotten)\n- **Enhanced Error Responses** - Structured errors with codes and request IDs\n\n## 🔐 Security\n\n- Password strength validation with complexity requirements\n- Bcrypt password hashing (10 rounds, configurable)\n- JWT algorithm hardening (HS256 only)\n- Timing-safe token comparisons\n- Account lockout after 5 failed attempts (30 minutes)\n- Input sanitization and validation\n- User enumeration prevention\n- OWASP Top 10 compliant\n\n## 🌐 Base URLs\n\n**Version 1 (Recommended):**\n- `http://localhost:3000/api/v1`\n\n**Legacy (Backward Compatible):**\n- `http://localhost:3000/api`\n\n## 🔑 Authentication\n\nMost endpoints require a Bearer token in the Authorization header:\n\n```\nAuthorization: Bearer {{access_token}}\n```\n\nAdmin endpoints require an admin token:\n\n```\nAuthorization: Bearer {{admin_access_token}}\n```\n\n## 📊 Rate Limits\n\n- **Global API**: 1000 requests/hour\n- **Login**: 25 requests/15 minutes\n- **Registration**: 5 requests/hour\n- **Password Reset**: 5 requests/hour\n- **Backup Code**: 5 attempts/15 minutes\n\n## 🆔 Request Tracking\n\nEvery request receives a unique request ID for tracing:\n- Sent in `X-Request-ID` header\n- Included in all error responses\n- Useful for debugging and log correlation\n\n## Version\n\n2.0.0 - Enterprise Edition\n",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "25231739",
+    "version": "2.0.0"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"username\": \"testuser\",\n  \"password\": \"SecurePass123!\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Register a new user account. Rate limited to 5 registrations per hour per IP.\n\n**Requirements:**\n- Email must be unique and valid format\n- Username must be 3-30 characters, alphanumeric only\n- Password must be at least 8 characters with uppercase, lowercase, numbers, and special characters\n\n**Response:**\n- User object with ID, email, username, role, and timestamps\n- In development mode: returns email verification token\n\n**Security:**\n- Password is hashed with bcrypt (10 rounds)\n- Generic error messages prevent user enumeration\n- Email verification token auto-generated (24-hour expiration)"
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Login Tests: parse tokens and store in collection variables",
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has JSON content-type', function () {",
+                  "  pm.response.to.have.header('Content-Type');",
+                  "  const ct = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(ct.toLowerCase()).to.include('application/json');",
+                  "});",
+                  "",
+                  "let json;",
+                  "try {",
+                  "  json = pm.response.json();",
+                  "} catch (e) {",
+                  "  json = null;",
+                  "}",
+                  "",
+                  "pm.test('Response body is valid JSON', function () {",
+                  "  pm.expect(json, 'should parse JSON').to.be.an('object');",
+                  "});",
+                  "",
+                  "if (json) {",
+                  "  const access = json.accessToken || json.access_token || json.token;",
+                  "  const refresh = json.refreshToken || json.refresh_token;",
+                  "",
+                  "  pm.test('Access token is present and non-empty', function () {",
+                  "    pm.expect(access, 'access token').to.be.a('string').and.not.empty;",
+                  "  });",
+                  "",
+                  "  if (typeof access === 'string' && access.length) {",
+                  "    pm.collectionVariables.set('access_token', access);",
+                  "  }",
+                  "",
+                  "  pm.test('Refresh token is present and non-empty', function () {",
+                  "    pm.expect(refresh, 'refresh token').to.be.a('string').and.not.empty;",
+                  "  });",
+                  "",
+                  "  if (typeof refresh === 'string' && refresh.length) {",
+                  "    pm.collectionVariables.set('refresh_token', refresh);",
+                  "  }",
+                  "}",
+                  "",
+                  "// Optional: surface short info in test output",
+                  "pm.test('Collection tokens updated', function () {",
+                  "  pm.expect(pm.collectionVariables.get('access_token')).to.be.a('string');",
+                  "  pm.expect(pm.collectionVariables.get('refresh_token')).to.be.a('string');",
+                  "});",
+                  "",
+                  "// Verify tokens are scoped to collection (environment vars should be empty or different)",
+                  "pm.test('Tokens are stored at collection scope', function () {",
+                  "  const envAccess = pm.environment.get('access_token');",
+                  "  const envRefresh = pm.environment.get('refresh_token');",
+                  "  pm.expect(pm.collectionVariables.get('access_token')).to.be.a('string').and.not.empty;",
+                  "  pm.expect(pm.collectionVariables.get('refresh_token')).to.be.a('string').and.not.empty;",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Login pre-request script (no changes needed here by default)",
+                  "// Ensure environment tokens are cleared before login if desired",
+                  "// pm.environment.unset('access_token');",
+                  "// pm.environment.unset('refresh_token');"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\"\n//   \"twoFactorToken\": \"255035\",\n//   \"tempToken\": \"eyJkYXRhIjp7InVzZXJJZCI6ImNtaTFjdjlybjAwMDB0MG10MXViZXBkaXYiLCJlbWFpbCI6InVzZXJAZXhhbXBsZS5jb20iLCJ0aW1lc3RhbXAiOjE3NjMyODAwNDc2MjB9LCJzaWduYXR1cmUiOiI4MDMyOTQ4YmY1MGQ2NGMyYTAzMGM1YjkxODUxYTk1ZmM5ZmQyMDM5ZjlmMTY3YzVlMjdjM2YzMDAyMjM3ZGVmIn0=\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login with email and password. Rate limited to 25 requests per 15 minutes.\n\n**Standard Login (no 2FA):**\n```json\n{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\"\n}\n```\n\n**2FA Login (2-step process):**\n1. First request without 2FA token returns `requiresTwoFactor: true` and `tempToken`\n2. Second request includes 2FA token and temp token:\n```json\n{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"twoFactorToken\": \"123456\",\n  \"tempToken\": \"<temp-token-from-step-1>\"\n}\n```\n\n**Response:**\n- Access token (JWT, 15 minutes expiration)\n- Refresh token (7 days expiration)\n- User object\n\n**Security:**\n- Account lockout after 5 failed attempts (30 minutes)\n- Generic error messages prevent user enumeration\n- Activity logging with IP and User-Agent\n- 2FA temp tokens signed with HMAC-SHA256 (5-minute expiration)"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Refresh Token Tests: update collection tokens",
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has JSON content-type', function () {",
+                  "  pm.response.to.have.header('Content-Type');",
+                  "  const ct = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(ct.toLowerCase()).to.include('application/json');",
+                  "});",
+                  "",
+                  "let json;",
+                  "try {",
+                  "  json = pm.response.json();",
+                  "} catch (e) {",
+                  "  json = null;",
+                  "}",
+                  "",
+                  "pm.test('Response body is valid JSON', function () {",
+                  "  pm.expect(json, 'should parse JSON').to.be.an('object');",
+                  "});",
+                  "",
+                  "if (json) {",
+                  "  const newAccess = json.accessToken || json.access_token || json.token;",
+                  "  const newRefresh = json.refreshToken || json.refresh_token;",
+                  "",
+                  "  if (typeof newAccess === 'string' && newAccess.length) {",
+                  "    pm.collectionVariables.set('access_token', newAccess);",
+                  "  }",
+                  "",
+                  "  if (typeof newRefresh === 'string' && newRefresh.length) {",
+                  "    pm.collectionVariables.set('refresh_token', newRefresh);",
+                  "  }",
+                  "",
+                  "  pm.test('Access token updated and non-empty (collection scope)', function () {",
+                  "    pm.expect(pm.collectionVariables.get('access_token')).to.be.a('string').and.not.empty;",
+                  "  });",
+                  "",
+                  "  pm.test('Refresh token present if provided (collection scope)', function () {",
+                  "    if (newRefresh) {",
+                  "      pm.expect(pm.collectionVariables.get('refresh_token')).to.be.a('string').and.not.empty;",
+                  "    } else {",
+                  "      pm.expect(true).to.be.true; // pass when not provided",
+                  "    }",
+                  "  });",
+                  "}",
+                  "",
+                  "// Ensure body resolves {{refresh_token}} from collection scope",
+                  "pm.test('Request uses collection-scoped refresh_token', function () {",
+                  "  const usedRefresh = pm.variables.get('refresh_token'); // resolves with standard precedence",
+                  "  const collRefresh = pm.collectionVariables.get('refresh_token');",
+                  "  pm.expect(usedRefresh, 'resolved refresh_token').to.equal(collRefresh);",
+                  "});",
+                  "",
+                  "// Verify tokens are scoped to collection",
+                  "pm.test('Tokens are stored at collection scope', function () {",
+                  "  const envAccess = pm.environment.get('access_token');",
+                  "  const envRefresh = pm.environment.get('refresh_token');",
+                  "  pm.expect(pm.collectionVariables.get('access_token')).to.be.a('string').and.not.empty;",
+                  "  if (pm.collectionVariables.get('refresh_token')) {",
+                  "    pm.expect(pm.collectionVariables.get('refresh_token')).to.be.a('string').and.not.empty;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Refresh an expired access token using a valid refresh token.\n\n**Request:**\n```json\n{\n  \"refreshToken\": \"<refresh-token>\"\n}\n```\n\n**Response:**\n- New access token (JWT, 15 minutes expiration)\n- New refresh token (7 days expiration)\n\n**Notes:**\n- Old refresh token is revoked after use (token rotation)\n- Refresh tokens are stored in database with expiration tracking\n- Revoked tokens cannot be reused"
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Logout and revoke tokens. Requires authentication.\n\n**Request:**\n```json\n{\n  \"refreshToken\": \"<refresh-token>\"\n}\n```\n\n**Security:**\n- Revokes the provided refresh token\n- Invalidates the current access token\n- Activity logged with IP and User-Agent\n\n**Note:** For logging out from all devices, use the \"Logout All Devices\" endpoint."
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"SecurePass123!\",\n  \"newPassword\": \"NewSecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "change-password"]
+            },
+            "description": "Change password for authenticated user. Requires current password verification.\n\n**Request:**\n```json\n{\n  \"oldPassword\": \"SecurePass123!\",\n  \"newPassword\": \"NewSecurePass123!\"\n}\n```\n\n**Requirements:**\n- Must be authenticated\n- Old password must be correct\n- New password must meet strength requirements\n- New password must differ from old password\n\n**Security:**\n- All refresh tokens are revoked after password change\n- Activity logged with IP and User-Agent\n- Password hashed with bcrypt"
+          },
+          "response": []
+        },
+        {
+          "name": "Request Password Reset",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/request-password-reset",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "request-password-reset"]
+            },
+            "description": "Request a password reset token. Rate limited to 5 requests per hour per IP."
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<64-char-hex-token>\",\n  \"newPassword\": \"NewSecurePass123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "description": "Reset password using the token received via email. Token is valid for 1 hour and single-use only."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<64-char-hex-token>\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/verify-email",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-email"]
+            },
+            "description": "Verify email address using the token received after registration. Token is valid for 24 hours and single-use only. In development mode, the token is returned in the registration response."
+          },
+          "response": []
+        },
+        {
+          "name": "Resend Verification Email",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/resend-verification",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "resend-verification"]
+            },
+            "description": "Resend email verification link. Rate limited to 5 requests per hour per IP. Previous tokens are invalidated when a new token is generated."
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          { "key": "token", "value": "{{access_token}}", "type": "string" }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [""]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [""]
+          }
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/profile",
+              "host": ["{{base_url}}"],
+              "path": ["users", "profile"]
+            },
+            "description": "Get authenticated user's profile information.\n\n**Response includes:**\n- User ID, email, username\n- First name, last name\n- Role (USER, MODERATOR, ADMIN)\n- Account status (isActive)\n- Email verification status\n- 2FA enabled status\n- Created and updated timestamps\n\n**Authentication:** Required (Bearer token)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Jonathan\",\n  \"lastName\": \"Smith\",\n  \"username\": \"newusername\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/profile",
+              "host": ["{{base_url}}"],
+              "path": ["users", "profile"]
+            },
+            "description": "Update user profile information. All fields are optional.\n\n**Updatable fields:**\n- firstName (max 50 characters)\n- lastName (max 50 characters)\n- username (3-30 alphanumeric characters, must be unique)\n\n**Note:** Email and role cannot be changed through this endpoint.\n\n**Authentication:** Required (Bearer token)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Activity Log",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/activity?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["users", "activity"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            },
+            "description": "Get paginated activity log for authenticated user.\n\n**Query Parameters:**\n- page: Page number (default: 1)\n- limit: Items per page, max 100 (default: 10)\n\n**Response includes:**\n- Activity logs with action, IP address, user agent, timestamp\n- Common actions: USER_REGISTERED, LOGIN_SUCCESS, LOGIN_FAILED, PASSWORD_CHANGED, 2FA_ENABLED, 2FA_DISABLED, EMAIL_VERIFIED, etc.\n- Total count and pagination info\n\n**Use cases:**\n- Audit trail of account activity\n- Security monitoring\n- Troubleshooting login issues\n\n**Authentication:** Required (Bearer token)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Sessions",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/sessions",
+              "host": ["{{base_url}}"],
+              "path": ["users", "sessions"]
+            },
+            "description": "Get all active sessions for authenticated user across all devices.\n\n**Response includes:**\n- Session ID\n- Device information (deviceId, deviceName)\n- IP address and User-Agent\n- Last activity timestamp\n- Created timestamp\n\n**Use cases:**\n- View all logged-in devices\n- Identify suspicious sessions\n- Manage active sessions\n\n**Note:** Device names are parsed from User-Agent (e.g., \"Chrome on Windows\", \"Safari on iOS\")\n\n**Authentication:** Required (Bearer token)"
+          },
+          "response": []
+        },
+        {
+          "name": "Revoke Specific Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/sessions/:sessionId/revoke",
+              "host": ["{{base_url}}"],
+              "path": ["users", "sessions", ":sessionId", "revoke"],
+              "variable": [
+                {
+                  "key": "sessionId",
+                  "description": "Session ID from \"Get Active Sessions\" endpoint"
+                }
+              ]
+            },
+            "description": "Revoke a specific session (logout from specific device).\n\n**URL Parameter:**\n- sessionId: The session ID to revoke (get from \"Get Active Sessions\")\n\n**Effect:**\n- Revokes all refresh tokens associated with that session\n- User will need to re-login on that device\n- Current session (the one making this request) remains active\n\n**Use cases:**\n- Logout from a lost or stolen device\n- Remove suspicious sessions\n- Clean up old sessions\n\n**Security:**\n- Activity logged with IP and User-Agent\n- Cannot revoke sessions of other users\n\n**Authentication:** Required (Bearer token)"
+          },
+          "response": []
+        },
+        {
+          "name": "Logout All Devices",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/sessions/logout-all",
+              "host": ["{{base_url}}"],
+              "path": ["users", "sessions", "logout-all"]
+            },
+            "description": "Logout from all devices (revoke all sessions and tokens).\n\n**Effect:**\n- Revokes ALL refresh tokens for the user\n- Invalidates the current access token\n- User will need to re-login on ALL devices\n\n**Use cases:**\n- Emergency logout (e.g., after password compromise)\n- Clear all sessions when changing password\n- Security measure after suspicious activity\n\n**Security:**\n- Activity logged with IP and User-Agent\n- Immediate effect across all devices\n- Current session is also terminated\n\n**Note:** After calling this endpoint, you'll need to login again.\n\n**Authentication:** Required (Bearer token)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2FA",
+      "item": [
+        {
+          "name": "Enable 2FA",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/2fa/enable",
+              "host": ["{{base_url}}"],
+              "path": ["users", "2fa", "enable"]
+            },
+            "description": "Enable two-factor authentication - Step 1: Generate secret and QR code.\n\n**Response:**\n- secret: Base32-encoded secret for authenticator apps\n- qrCode: Data URL for QR code image (scan with Google Authenticator, Authy, etc.)\n- backupCodes: Array of 10 backup codes (save these securely!)\n\n**Next step:** Scan the QR code in your authenticator app, then call \"Confirm 2FA\" with a token from the app.\n\n**Backup codes:**\n- Each code can be used once\n- Hashed with bcrypt before storage\n- Used for account recovery if authenticator is lost\n\n**Authentication:** Required (Bearer token)"
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm 2FA",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"twoFactorToken\": \"123456\",\n  \"secret\": \"JBSWY3DPEBLW64TMMQ6A\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/2fa/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["users", "2fa", "confirm"]
+            },
+            "description": "Enable two-factor authentication - Step 2: Confirm with token from authenticator app.\n\n**Request:**\n- twoFactorToken: 6-digit code from authenticator app (30-second window)\n- secret: The secret returned from \"Enable 2FA\" endpoint\n\n**Verification:**\n- Token must be valid (30-second time window)\n- Secret must match the one generated in step 1\n\n**After confirmation:**\n- 2FA is fully enabled on account\n- Future logins will require 2FA token\n- Backup codes are available for recovery\n\n**Authentication:** Required (Bearer token)"
+          },
+          "response": []
+        },
+        {
+          "name": "Disable 2FA",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"SecurePass123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/users/2fa/disable",
+              "host": ["{{base_url}}"],
+              "path": ["users", "2fa", "disable"]
+            },
+            "description": "Disable two-factor authentication. Requires password confirmation for security. All backup codes are deleted when 2FA is disabled."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/admin/users?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["users", "admin", "users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page, max 100 (default: 10)"
+                },
+                {
+                  "key": "role",
+                  "value": "USER",
+                  "description": "Filter by role (USER, MODERATOR, ADMIN)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get paginated list of all users. Admin only.\n\n**Query Parameters:**\n- page: Page number (default: 1)\n- limit: Items per page, max 100 (default: 10)\n- role: Optional filter by role (USER, MODERATOR, ADMIN)\n\n**Response includes:**\n- User list with ID, email, username, name, role, status\n- Total count\n- Pagination info\n\n**Authorization:** ADMIN role required"
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}"
+              },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"role\": \"MODERATOR\"\n}" },
+            "url": {
+              "raw": "{{base_url}}/users/admin/users/:userId/role",
+              "host": ["{{base_url}}"],
+              "path": ["users", "admin", "users", ":userId", "role"],
+              "variable": [
+                { "key": "userId", "description": "User ID to update" }
+              ]
+            },
+            "description": "Update user's role. Admin only.\n\n**Request:**\n```json\n{\n  \"role\": \"USER\" | \"MODERATOR\" | \"ADMIN\"\n}\n```\n\n**Security restrictions:**\n- Only ADMIN can update roles\n- Cannot change own role (prevent privilege removal)\n- Cannot promote to ADMIN unless requester is ADMIN\n- Role hierarchy enforced: ADMIN > MODERATOR > USER\n\n**Audit:**\n- All role changes are logged in audit trail\n- Includes admin ID, old role, new role, timestamp\n\n**Authorization:** ADMIN role required"
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/admin/users/:userId/deactivate",
+              "host": ["{{base_url}}"],
+              "path": ["users", "admin", "users", ":userId", "deactivate"],
+              "variable": [
+                { "key": "userId", "description": "User ID to deactivate" }
+              ]
+            },
+            "description": "Deactivate a user account. Admin only.\n\n**Effect:**\n- Sets user's isActive to false\n- User cannot login\n- Existing sessions remain valid until tokens expire\n- User data is preserved (not deleted)\n\n**Use cases:**\n- Temporarily suspend user access\n- Security measure for compromised accounts\n- Disciplinary action\n\n**Audit:**\n- Action logged with admin ID, timestamp, IP\n- Can be reversed with \"Activate User\" endpoint\n\n**Authorization:** ADMIN role required"
+          },
+          "response": []
+        },
+        {
+          "name": "Activate User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/admin/users/:userId/activate",
+              "host": ["{{base_url}}"],
+              "path": ["users", "admin", "users", ":userId", "activate"],
+              "variable": [
+                { "key": "userId", "description": "User ID to activate" }
+              ]
+            },
+            "description": "Activate a deactivated user account. Admin only.\n\n**Effect:**\n- Sets user's isActive to true\n- User can login again\n- Restores full account access\n\n**Use cases:**\n- Reactivate suspended accounts\n- Restore access after security review\n- Undo accidental deactivation\n\n**Audit:**\n- Action logged with admin ID, timestamp, IP\n\n**Authorization:** ADMIN role required"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Recovery",
+      "item": [
+        {
+          "name": "Add Recovery Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recoveryEmail\": \"recovery@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/recovery/recovery-email/add",
+              "host": ["{{base_url}}"],
+              "path": ["recovery", "recovery-email", "add"]
+            },
+            "description": "Add a recovery email address for account recovery.\n\n**Request:**\n```json\n{\n  \"recoveryEmail\": \"recovery@example.com\"\n}\n```\n\n**Purpose:**\n- Alternative email for password reset\n- Account recovery if primary email is compromised\n- Additional security layer\n\n**Note:** In production, a verification email should be sent to the recovery email.\n\n**Authentication:** Required (Bearer token)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Recovery Options",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/recovery/recovery-options",
+              "host": ["{{base_url}}"],
+              "path": ["recovery", "recovery-options"]
+            },
+            "description": "Get all recovery options for authenticated user.\n\n**Response includes:**\n- Recovery options (email, phone, security questions)\n- Backup codes remaining count\n- Verification status\n- Created timestamps\n\n**Authentication:** Required (Bearer token)"
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Recovery Option",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/recovery/recovery-options/:optionId",
+              "host": ["{{base_url}}"],
+              "path": ["recovery", "recovery-options", ":optionId"],
+              "variable": [{ "key": "optionId" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Backup Code Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/recovery/backup-codes/status",
+              "host": ["{{base_url}}"],
+              "path": ["recovery", "backup-codes", "status"]
+            },
+            "description": "Get backup code status and remaining count.\n\n**Response includes:**\n- Number of unused backup codes remaining\n- 2FA enabled status\n\n**Note:** Each backup code can only be used once.\n\n**Authentication:** Required (Bearer token)"
+          },
+          "response": []
+        },
+        {
+          "name": "Use Backup Code",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"<user-id>\",\n  \"backupCode\": \"XXXX-XXXX-XXXX\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/recovery/backup-code/use",
+              "host": ["{{base_url}}"],
+              "path": ["recovery", "backup-code", "use"]
+            },
+            "description": "Use a backup code for authentication (rate-limited to 5 attempts per 15 minutes). After 5 failed attempts, account locks for 30 minutes."
+          },
+          "response": []
+        },
+        {
+          "name": "Regenerate Backup Codes",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"SecurePass123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/recovery/backup-codes/regenerate",
+              "host": ["{{base_url}}"],
+              "path": ["recovery", "backup-codes", "regenerate"]
+            },
+            "description": "Generate new backup codes (10 codes). Requires password confirmation for security. Previous backup codes are invalidated when new ones are generated. 2FA must be enabled to regenerate codes."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Health check endpoint. No authentication required.\n\n**Response:**\n```json\n{\n  \"status\": \"ok\",\n  \"timestamp\": \"2025-11-17T05:56:00.000Z\"\n}\n```\n\n**Use cases:**\n- Monitor service availability\n- Load balancer health checks\n- Container orchestration readiness probes"
+      },
+      "response": []
+    },
+    {
+      "name": "Health Checks",
+      "item": [
+        {
+          "name": "Basic Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Basic health check endpoint. Returns database status and timestamp.\n\n**Response:**\n```json\n{\n  \"status\": \"ok\",\n  \"database\": \"connected\",\n  \"timestamp\": \"2024-01-15T10:30:00.000Z\"\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Detailed Health Check (Monitoring)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health/detailed",
+              "host": ["{{base_url}}"],
+              "path": ["health", "detailed"]
+            },
+            "description": "Detailed health check with system metrics.\n\n**Includes:**\n- Database status and response time\n- Token store status\n- System uptime\n- Memory usage (total, free, used, percentage)\n- CPU information (cores, model, load average)\n- Process metrics\n- Environment info\n\n**For monitoring systems like:**\n- Prometheus\n- Datadog\n- New Relic"
+          },
+          "response": []
+        },
+        {
+          "name": "Readiness Probe (Kubernetes)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health/ready",
+              "host": ["{{base_url}}"],
+              "path": ["health", "ready"]
+            },
+            "description": "Kubernetes readiness probe.\n\nReturns 200 if service is ready to accept traffic, 503 if not ready.\n\n**Response when ready:**\n```json\n{\n  \"ready\": true,\n  \"timestamp\": \"2024-01-15T10:30:00.000Z\"\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Liveness Probe (Kubernetes)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health/live",
+              "host": ["{{base_url}}"],
+              "path": ["health", "live"]
+            },
+            "description": "Kubernetes liveness probe.\n\nAlways returns 200 to indicate the service process is alive.\n\n**Response:**\n```json\n{\n  \"alive\": true,\n  \"timestamp\": \"2024-01-15T10:30:00.000Z\"\n}\n```"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3000/api" },
+    { "key": "access_token", "value": "" },
+    { "key": "refresh_token", "value": "" },
+    { "key": "admin_access_token", "value": "" }
+  ]
+}
